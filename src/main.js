@@ -1,9 +1,23 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
 const path = require('node:path');
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
   app.quit();
+}
+
+function handleSetTitle(event, title) {
+  const webContents = event.sender
+  const win = BrowserWindow.fromWebContents(webContents)
+  win.setTitle(title)
+}
+
+async function handleFileOpen () {
+  console.log('sdfsdfs')
+  const {canceled,filePaths} = await dialog.showOpenDialog()
+  if (!canceled) {
+    return filePaths[0]
+  }
 }
 
 const createWindow = () => {
@@ -16,6 +30,25 @@ const createWindow = () => {
       preload: path.join(__dirname, 'preload.js'),
     },
   });
+
+  const menu = Menu.buildFromTemplate([
+    {
+      label: app.name,
+      submenu: [
+        {
+          click: () => {console.log('iiiiiii');mainWindow.webContents.send('update-counter', 1)},
+          label: 'Increment'
+        },
+        {
+          click: () => {console.log('yyyy');mainWindow.webContents.send('update-counter', -1)},
+          label: 'Decrement'
+        }
+      ]
+    }
+
+  ])
+
+  Menu.setApplicationMenu(menu)
 
   // and load the index.html of the app.
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
@@ -32,7 +65,13 @@ const createWindow = () => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
-  ipcMain.handle('ping', () => 'pong')
+  ipcMain.handle('ping', () => 'pong');
+  ipcMain.on('set-title', handleSetTitle);
+  ipcMain.handle('dialog:openFile', handleFileOpen);
+  ipcMain.on('counter-value', (_event, value) => {
+    console.log(value) // will print value to Node console
+  })
+
   createWindow();
 
   // On OS X it's common to re-create a window in the app when the
